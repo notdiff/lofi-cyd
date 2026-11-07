@@ -1,0 +1,16 @@
+{
+  "version": "0.6.1",
+  "chip": "esp32",
+  "flash_size": "4MB",
+  "flash_address": "0x0",
+  "images": {
+    "cyd-st7789.bin": {
+      "bytes": 2012624,
+      "sha256": "c83a4e2582e39831888858dce2f86337d2319a44175e006d0cee2883c1657759"
+    },
+    "cyd-ili9341.bin": {
+      "bytes": 2012688,
+      "sha256": "97706edbd0064c1926614c6e8859799b2154918d98cc661a553b8ad66ad0c7b6"
+    }
+  }
+}
