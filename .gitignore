@@ -1,9 +1,6 @@
-SYSTEM.md
-AGENTS.md
 .DS_Store
-.pio-core/
-cyd-workshop/.pio/
-cyd-workshop/.local/
-cyd-workshop/src/secrets.h
-cyd-workshop/tests/.build/
-.tools
+.pio/
+.venv/
+__pycache__/
+*.pyc
+dist/
