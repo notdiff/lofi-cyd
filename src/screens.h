@@ -1,5 +1,6 @@
 #pragma once
 #include "btc_chart.h"
+#include "display_settings.h"
 #include "overview.h"
 #include "screen_frame.h"
 #include <ctime>
@@ -109,18 +110,21 @@ inline ScreenFrame makeSetupFrame() {
 }
 inline ScreenFrame makeScreenFrame(Page page, const LiveSnapshot& data, uint32_t now, int64_t epoch,
                                    bool connected, bool demo = false,
-                                   const BtcHistory* history = nullptr) {
+                                   const BtcHistory* history = nullptr, int utcMinutes = 180) {
     ScreenFrame frame;
     char text[48] = {};
     if (page == Page::Clock) {
         const bool valid = epoch >= 1700000000;
-        screenField(frame, 40, 31, 164, 13, 10, valid ? kScreenCyan : kScreenMuted,
-                    demo ? "MSK / DEMO" : (valid ? "MSK" : "MSK / NTP WAIT"), true);
+        char offset[8];
+        formatUtcOffset(offset, sizeof(offset), utcMinutes);
+        snprintf(text, sizeof(text), "UTC%s%s", offset,
+                 demo ? " / DEMO" : (valid ? "" : " / NTP WAIT"));
+        screenField(frame, 40, 31, 164, 13, 10, valid ? kScreenCyan : kScreenMuted, text, true);
 
-        const time_t moscow = time_t(epoch + 10800);
+        const time_t localTime = time_t(epoch + utcMinutes * 60);
         tm date = {};
         if (valid)
-            gmtime_r(&moscow, &date);
+            gmtime_r(&localTime, &date);
         if (valid)
             snprintf(text, sizeof(text), "%02d:%02d", date.tm_hour, date.tm_min);
         else
@@ -132,6 +136,7 @@ inline ScreenFrame makeScreenFrame(Page page, const LiveSnapshot& data, uint32_t
         else
             snprintf(text, sizeof(text), "WAITING FOR TIME");
         screenField(frame, 40, 101, 164, 18, 14, valid ? kScreenCyan : kScreenMuted, text, true);
+        screenButton(frame, kClockSettingsButton, "Settings", !demo);
     } else if (page == Page::Overview) {
         const auto overview = overviewText(data, now, connected);
         screenField(frame, 25, 32, 137, 14, 10, overview.btcFresh ? kScreenWhite : kScreenMuted,
@@ -179,8 +184,6 @@ inline ScreenFrame makeScreenFrame(Page page, const LiveSnapshot& data, uint32_t
                                             : color;
             screenField(frame, x + 52, y, 79, 13, 13, valueColor, text);
         }
-        screenButton(frame, kSettingsButton, "Settings", fresh && !demo);
-        screenButton(frame, kRestartButton, "Restart", fresh && !demo);
     } else {
         const bool fresh = btcFresh(data.btc, now, connected);
         const uint16_t color = fresh ? kScreenWhite : kScreenMuted;

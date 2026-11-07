@@ -1,30 +1,48 @@
 #pragma once
 #include <cstdint>
 
-enum class RabbitAction : uint8_t { Idle, Blink, Wave, Helmet, Sleep, Ear, Nuzzle, Fall };
+enum class RabbitAction : uint8_t {
+    Idle,
+    Blink,
+    Wave,
+    Helmet,
+    Sleep,
+    Ear,
+    Nuzzle,
+    Fall,
+    Hop,
+    Dance,
+    Coin,
+    Dream
+};
 struct RabbitPose {
     uint8_t frame;
     int8_t lift;
     RabbitAction action;
+    int8_t shift;
+    uint8_t phase;
+    constexpr RabbitPose(uint8_t frame, int8_t lift, RabbitAction action, int8_t shift = 0,
+                         uint8_t phase = 0)
+        : frame(frame), lift(lift), action(action), shift(shift), phase(phase) {}
 };
 struct RabbitRegion {
     int x, y, w, h;
 };
 
-inline bool rabbitEnabled(uint8_t page) {
-    return page != 2;
-}
-inline bool rabbitReactive(uint8_t page) {
-    return page == 1 || page == 3;
-}
+inline bool rabbitEnabled(uint8_t page) { return page != 2; }
+inline bool rabbitReactive(uint8_t page) { return page == 1 || page == 3; }
 
 inline RabbitRegion rabbitRegion(uint8_t page) {
     if (page == 0)
         return {140, 132, 180, 107};
     if (!rabbitEnabled(page))
         return {0, 0, 0, 0};
-    return {178, 35, 142, 190};
+    return {170, 23, 150, 212};
 }
+inline int rabbitWidth(uint8_t page) { return page == 0 ? 178 : 140; }
+inline int rabbitHeight(uint8_t page) { return page == 0 ? 104 : 187; }
+inline int rabbitLeft(uint8_t page) { return page == 0 ? 1 : 9; }
+inline int rabbitTop(uint8_t page) { return page == 0 ? 2 : 14; }
 inline const char* rabbitActionName(RabbitAction action) {
     switch (action) {
     case RabbitAction::Blink:
@@ -41,6 +59,14 @@ inline const char* rabbitActionName(RabbitAction action) {
         return "nuzzle";
     case RabbitAction::Fall:
         return "fall";
+    case RabbitAction::Hop:
+        return "hop";
+    case RabbitAction::Dance:
+        return "dance";
+    case RabbitAction::Coin:
+        return "bitcoin";
+    case RabbitAction::Dream:
+        return "dream";
     default:
         return "idle";
     }
@@ -97,7 +123,11 @@ class RabbitAnimator {
             elapsed = 0;
         }
         const uint32_t duration =
-            action_ == RabbitAction::Blink
+            action_ == RabbitAction::Hop     ? 1200
+            : action_ == RabbitAction::Dance ? 2400
+            : action_ == RabbitAction::Coin  ? 3200
+            : action_ == RabbitAction::Dream ? 2800
+            : action_ == RabbitAction::Blink
                 ? 210
                 : (action_ == RabbitAction::Wave
                        ? 1320
@@ -123,19 +153,40 @@ class RabbitAnimator {
         } else if ((action_ == RabbitAction::Idle || action_ == RabbitAction::Sleep) &&
                    uint32_t(now - activityAt_) >= activityWait_) {
             if (sleeping) {
-                action_ = next() & 1 ? RabbitAction::Ear : RabbitAction::Nuzzle;
+                const auto choice = next() % 3;
+                action_ = choice == 0   ? RabbitAction::Ear
+                          : choice == 1 ? RabbitAction::Nuzzle
+                                        : RabbitAction::Dream;
                 ++sleepActions;
             } else {
 
-                action_ = waves <= helmets ? RabbitAction::Wave : RabbitAction::Helmet;
+                const RabbitAction actions[] = {RabbitAction::Wave, RabbitAction::Helmet,
+                                                RabbitAction::Hop, RabbitAction::Dance};
+                ++activities_;
+                action_ = activities_ % 7 == 0 ? RabbitAction::Coin : actions[next() % 4];
                 if (action_ == RabbitAction::Wave)
                     ++waves;
-                else
+                else if (action_ == RabbitAction::Helmet)
                     ++helmets;
             }
             actionAt_ = now;
         }
         elapsed = now - actionAt_;
+        if (action_ == RabbitAction::Hop || action_ == RabbitAction::Dance ||
+            action_ == RabbitAction::Coin || action_ == RabbitAction::Dream) {
+            const uint8_t phase = uint8_t(elapsed / 25);
+            if (action_ == RabbitAction::Dream)
+                return {uint8_t((uint32_t(now - phaseAt_) / 1600) % 2), 0, action_, 0, phase};
+            const int period = action_ == RabbitAction::Hop ? 600 : 800;
+            const int t = elapsed % period;
+            const int triangle = t < period / 2 ? t : period - t;
+            const int lift = action_ == RabbitAction::Hop ? triangle * 12 / (period / 2)
+                                                          : triangle * 3 / (period / 2);
+            const int shift = action_ == RabbitAction::Dance ? -triangle * 8 / (period / 2) : 0;
+            const uint8_t frame = action_ == RabbitAction::Coin ? (elapsed % 900 < 180 ? 2 : 6)
+                                                                : (elapsed % 600 < 300 ? 4 : 5);
+            return {frame, int8_t(lift), action_, int8_t(shift), phase};
+        }
         uint8_t frame = 0;
         if (action_ == RabbitAction::Blink)
             frame = elapsed < 60 || elapsed >= 150 ? 1 : 2;
@@ -165,11 +216,10 @@ class RabbitAnimator {
         random_ ^= random_ << 5;
         return random_;
     }
-    uint32_t between(uint32_t low, uint32_t high) {
-        return low + next() % (high - low + 1);
-    }
+    uint32_t between(uint32_t low, uint32_t high) { return low + next() % (high - low + 1); }
     uint32_t random_, actionAt_ = 0, phaseAt_ = 0, blinkAt_ = 0, activityAt_ = 0;
     uint32_t blinkWait_ = 0, activityWait_ = 0;
+    uint32_t activities_ = 0;
     bool started_ = false, sleeping_ = false;
     uint8_t reactionPage_ = 255;
     RabbitAction action_ = RabbitAction::Idle;

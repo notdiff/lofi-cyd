@@ -6,7 +6,7 @@
 #endif
 
 namespace config {
-constexpr char kVersion[] = "0.8.1";
+constexpr char kVersion[] = "0.9.3";
 constexpr char kMinerHost[] = LOFI_MINER_HOST;
 constexpr char kMinerUrl[] = "http://" LOFI_MINER_HOST "/api/system/info";
 constexpr char kMinerSystemUrl[] = "http://" LOFI_MINER_HOST "/api/system";

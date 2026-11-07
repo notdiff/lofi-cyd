@@ -12,8 +12,9 @@ inline bool rabbitHit(uint8_t page, const RabbitPose& pose, int x, int y) {
     if (!rabbitEnabled(page) || pose.frame == 255)
         return false;
     const auto region = rabbitRegion(page);
-    const int localX = x - region.x - 1, localY = y - region.y - 2 + pose.lift;
-    const int width = region.w - 2, height = region.h - 3;
+    const int localX = x - region.x - rabbitLeft(page) - pose.shift;
+    const int localY = y - region.y - rabbitTop(page) + pose.lift;
+    const int width = rabbitWidth(page), height = rabbitHeight(page);
     if (localX < 0 || localY < 0 || localX >= width || localY >= height)
         return false;
     const auto& sprite = rabbitSpriteForPose(page, pose);

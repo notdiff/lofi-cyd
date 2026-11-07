@@ -58,7 +58,7 @@ struct ControlMailbox {
   private:
     static bool valid(const MinerCommand& next);
 };
-enum class ControlView : uint8_t { Closed, Settings, Restart };
+enum class ControlView : uint8_t { Closed, Miner, Restart, Display };
 struct ControlEditor {
     ControlView view = ControlView::Closed;
     MinerSettings base, draft;
@@ -100,9 +100,7 @@ inline bool validMinerCommand(const MinerCommand& command) {
            (!(command.mask & ChangeVoltage) || minerChoice(s.voltage, kMinerVoltages)) &&
            (!(command.mask & ChangeFan) || (s.fan >= 0 && s.fan <= 100));
 }
-inline bool ControlMailbox::valid(const MinerCommand& next) {
-    return validMinerCommand(next);
-}
+inline bool ControlMailbox::valid(const MinerCommand& next) { return validMinerCommand(next); }
 inline const char* minerCommandMethod(const MinerCommand& command) {
     return command.restart ? "POST" : "PATCH";
 }
@@ -144,18 +142,25 @@ inline bool readMinerSettings(const MinerSample& m, MinerSettings& out) {
 }
 struct ControlRect {
     int x, y, w, h;
-    bool contains(int px, int py) const {
-        return px >= x && py >= y && px < x + w && py < y + h;
-    }
+    bool contains(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; }
 };
-constexpr ControlRect kSettingsButton{25, 194, 131, 22}, kRestartButton{167, 194, 131, 22};
-constexpr ControlRect kAutoButton{174, 53, 116, 27};
-constexpr ControlRect kMinusButtons[] = {{174, 84, 32, 28}, {174, 116, 32, 28}, {174, 148, 32, 28}};
-constexpr ControlRect kPlusButtons[] = {{258, 84, 32, 28}, {258, 116, 32, 28}, {258, 148, 32, 28}};
-constexpr ControlRect kBackButton{30, 196, 116, 20}, kSaveButton{174, 196, 116, 20};
+constexpr ControlRect kClockSettingsButton{30, 194, 100, 22};
+constexpr ControlRect kDisplayTab{10, 40, 145, 28}, kMinerTab{165, 40, 145, 28};
+constexpr ControlRect kRestartButton{236, 8, 74, 24};
+constexpr ControlRect kAutoButton{174, 76, 116, 27};
+constexpr ControlRect kBrightnessMinus{174, 72, 32, 20}, kBrightnessPlus{258, 72, 32, 20};
+constexpr ControlRect kNightButton{174, 93, 116, 20};
+constexpr ControlRect kDisplayMinusButtons[] = {
+    {174, 114, 32, 20}, {174, 135, 32, 20}, {174, 156, 32, 20}, {174, 177, 32, 20}};
+constexpr ControlRect kDisplayPlusButtons[] = {
+    {258, 114, 32, 20}, {258, 135, 32, 20}, {258, 156, 32, 20}, {258, 177, 32, 20}};
+constexpr ControlRect kMinusButtons[] = {
+    {174, 106, 32, 28}, {174, 136, 32, 28}, {174, 166, 32, 28}};
+constexpr ControlRect kPlusButtons[] = {{258, 106, 32, 28}, {258, 136, 32, 28}, {258, 166, 32, 28}};
+constexpr ControlRect kBackButton{10, 212, 136, 24}, kSaveButton{174, 212, 136, 24};
 constexpr ControlRect kCancelRestart{30, 170, 116, 32}, kConfirmRestart{174, 170, 116, 32};
 inline void editMinerSetting(ControlEditor& editor, int x, int y) {
-    if (!editor.ready || editor.view != ControlView::Settings)
+    if (!editor.ready || editor.view != ControlView::Miner)
         return;
     auto& s = editor.draft;
     if (kAutoButton.contains(x, y)) {

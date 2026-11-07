@@ -3,20 +3,14 @@
 #include "display_text.h"
 #include "rabbit_sprite.h"
 
-void DisplayRenderer::begin() {
-    tft.init();
-}
+void DisplayRenderer::begin() { tft.init(); }
 void DisplayRenderer::configure(uint8_t rotation, bool inverted, bool swap) {
     swapRedBlue = swap;
     tft.setRotation(rotation);
     tft.invertDisplay(inverted);
 }
-void DisplayRenderer::drawSettingsPanel() {
-    tft.fillRect(23, 31, 278, 186, color(0x0028));
-}
-void DisplayRenderer::drawIndicator(uint16_t value) {
-    tft.fillCircle(32, 211, 2, color(value));
-}
+void DisplayRenderer::drawSettingsPanel() { tft.fillScreen(color(0x0028)); }
+void DisplayRenderer::drawIndicator(uint16_t value) { tft.fillCircle(32, 211, 2, color(value)); }
 uint16_t DisplayRenderer::color(uint16_t value) const {
     if (!swapRedBlue)
         return value;
@@ -36,9 +30,7 @@ void DisplayRenderer::drawBackgroundRect(Page page, int x, int y, int w, int h) 
         tft.pushImage(x, row, w, 1, scanline);
     }
 }
-void DisplayRenderer::drawBackground(Page page) {
-    drawBackgroundRect(page, 0, 0, 320, 240);
-}
+void DisplayRenderer::drawBackground(Page page) { drawBackgroundRect(page, 0, 0, 320, 240); }
 
 void DisplayRenderer::drawText(const char* text, int x, int y, const BitmapFont& font,
                                uint16_t value) {
@@ -92,13 +84,18 @@ void DisplayRenderer::drawField(Page page, const ScreenField& field, bool settin
 void DisplayRenderer::drawRabbit(Page page, const RabbitSprite& sprite, const RabbitPose& pose) {
     const auto region = rabbitRegion(static_cast<uint8_t>(page));
     tft.setSwapBytes(true);
-    for (int row = 0; row < region.h; ++row) {
-
-        rabbitCompositeRow(sprite, region, pose.lift, row,
-                           kPageBackgrounds[static_cast<uint8_t>(page)], scanline);
-        for (int x = 0; x < region.w; ++x)
-            scanline[x] = color(scanline[x]);
-        tft.pushImage(region.x, region.y + row, region.w, 1, scanline);
+    const int batch = region.w <= 160 ? 2 : 1;
+    for (int row = 0; row < region.h; row += batch) {
+        const int count = row + batch <= region.h ? batch : region.h - row;
+        for (int i = 0; i < count; ++i) {
+            auto* output = scanline + i * region.w;
+            rabbitCompositeRow(sprite, region, static_cast<uint8_t>(page), pose, row + i,
+                               kPageBackgrounds[static_cast<uint8_t>(page)], output);
+            rabbitEffectRow(region, pose, row + i, output);
+            for (int x = 0; x < region.w; ++x)
+                output[x] = color(output[x]);
+        }
+        tft.pushImage(region.x, region.y + row, region.w, count, scanline);
     }
 }
 void DisplayRenderer::drawBtcChart(const BtcChart& chart) {
